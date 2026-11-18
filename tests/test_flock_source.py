@@ -31,11 +31,11 @@ def midterm(run_id="one", owner=7, steps=100, loss=3.27):
     }
 
 
-def fetch(labs=(), runs=(), members=None):
+def fetch(labs=(), runs=(), members=None, lab7=()):
     if members is None:
         members = [{"id": 7, "name": "Alice"}, {"id": 8, "name": "Alice"}]
     with (
-        patch.object(FlockClient, "runs", side_effect=[labs, runs]),
+        patch.object(FlockClient, "runs", side_effect=[labs, runs, lab7]),
         patch.object(FlockClient, "get", return_value={"members": members}),
         patch.object(FlockClient, "exceeds_memory_limit", return_value=False),
     ):
@@ -65,6 +65,50 @@ def test_midterm_best_per_owner_and_duplicate_display_names():
         == "https://flock.test/cerulean-labs/midterm-nanogpt/runs/better"
     )
     assert "midterm" not in TASKS
+
+
+def test_lab7_ranks_qualifying_runs_by_discounted_tokens():
+    run = {
+        "id": "boundary",
+        "owner": 7,
+        "created_at": 1792400000,
+        "summary.oj_total_tokens": 200_000_000_000,
+        "summary.total_tokens": 220_000_000_000,
+        "summary.paloma_ppl": 1.25,
+    }
+    items = fetch(
+        lab7=[
+            run,
+            {**run, "id": "slower", "summary.oj_total_tokens": 210_000_000_000},
+            {
+                **run,
+                "id": "other",
+                "owner": 8,
+                "summary.oj_total_tokens": 205_000_000_000,
+            },
+            {
+                **run,
+                "id": "over",
+                "summary.oj_total_tokens": 1,
+                "summary.paloma_ppl": 1.25001,
+            },
+            {**run, "id": "missing", "summary.paloma_ppl": None},
+            {**run, "id": "invalid", "summary.total_tokens": 1},
+        ]
+    )
+    board = next(board for board in rank_submissions(items) if board["id"] == "lab7")
+    assert board["primary_metric"] == "oj_total_tokens"
+    assert board["metric_direction"] == "minimize"
+    assert [entry["submission_id"] for entry in board["entries"]] == [
+        "boundary",
+        "other",
+    ]
+    best = board["entries"][0]
+    assert best["total_tokens"] == 220_000_000_000
+    assert best["paloma_ppl"] == 1.25
+    assert best["attempts"] == 2
+    assert best["run_url"].endswith("/lab7-data-curation/runs/boundary")
+    assert "lab7" not in TASKS
 
 
 def test_midterm_profiles_follow_owner_id_through_ranking():
@@ -230,7 +274,7 @@ def test_auth_failure_preserves_standings_and_logs_recovery(
     monkeypatch.delenv("JUDGE_SLACK_WEBHOOK_URL", raising=False)
     monkeypatch.delenv("JUDGE_SLACK_BOT_TOKEN", raising=False)
     service = LeaderboardService(tmp_path / "judge.db")
-    # Exercise members, both run lists, and system history through the HTTP client.
+    # Exercise members, run lists, and system history through the HTTP client.
     responses = [
         {"members": [{"id": 7, "name": "Alice"}]},
         {"total": 0, "ids": [], "data": {}},
@@ -240,6 +284,7 @@ def test_auth_failure_preserves_standings_and_logs_recovery(
             "data": {key: [value] for key, value in midterm().items() if key != "id"},
         },
         {"series": {}},
+        {"total": 0, "ids": [], "data": {}},
     ]
     with patch("judge.flock_source.urlopen") as send:
         replies = []
@@ -251,13 +296,17 @@ def test_auth_failure_preserves_standings_and_logs_recovery(
             replies.append(response)
         send.side_effect = replies
         service.refresh()
-        assert send.call_count == 4
+        assert send.call_count == 5
         assert all(
             call.args[0].get_header("Authorization")
             == "Bearer flock_cli_private-test-token"
             for call in send.call_args_list
         )
-        assert send.call_args.args[0].full_url.endswith("stream=system&max_points=0")
+        assert (
+            send.call_args_list[-2]
+            .args[0]
+            .full_url.endswith("stream=system&max_points=0")
+        )
         assert service.snapshot["error"] is None
         boards = {board["id"]: board for board in service.snapshot["labs"]}
         assert boards["midterm"]["entries"][0]["score"] == 100
@@ -309,7 +358,7 @@ def test_vram_checks_all_samples_without_downsampling(peak, excluded):
 
 def test_over_memory_run_is_excluded():
     with (
-        patch.object(FlockClient, "runs", side_effect=[[], [midterm()]]),
+        patch.object(FlockClient, "runs", side_effect=[[], [midterm()], []]),
         patch.object(
             FlockClient, "get", return_value={"members": [{"id": 7, "name": "Alice"}]}
         ),
@@ -337,6 +386,7 @@ def test_missing_midterm_keeps_existing_lab_results():
             {"members": []},
             lab_page,
             HTTPError("https://api.flock.test", 404, "missing", Message(), None),
+            {"total": 0, "ids": [], "data": {}},
         ],
     ):
         items = flock_submissions(set(TASKS))

@@ -3,5 +3,6 @@
   "lab2": "MMLU Evaluation Harness",
   "lab4": "Training GPT-2 from Scratch",
   "lab5": "Training Llama 3.2 from Scratch",
+  "lab7": "Data Curation and Mixing",
   "midterm": "Speedrunning NanoGPT"
 }
