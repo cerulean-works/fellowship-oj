@@ -107,7 +107,10 @@ def test_lab7_ranks_qualifying_runs_by_discounted_tokens():
     assert best["total_tokens"] == 220_000_000_000
     assert best["paloma_ppl"] == 1.25
     assert best["attempts"] == 2
-    assert best["run_url"].endswith("/lab7-data-curation/runs/boundary")
+    assert (
+        best["run_url"]
+        == "https://flock.test/cerulean-labs/lab7-data-curation/runs/boundary"
+    )
     assert "lab7" not in TASKS
 
 
