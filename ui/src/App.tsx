@@ -24,6 +24,8 @@ type Entry = {
     participant_id?: string;
     avatar_url?: string | null;
     val_loss?: number;
+    total_tokens?: number;
+    paloma_ppl?: number;
 };
 type Lab = {
     id: string;
@@ -136,6 +138,8 @@ export default function App() {
     }, []);
     const lab = data?.labs.find((item) => item.id === selected);
     const midterm = lab?.id === "midterm";
+    const lab7 = lab?.id === "lab7";
+    const automatic = midterm || lab7;
     const scored = lab?.grading_type === "score";
     const entries =
         lab?.entries.filter((entry) =>
@@ -203,11 +207,13 @@ export default function App() {
                                         ? (names[lab.id] ?? lab.id)
                                         : "Loading experiments"}
                                 </h2>
-                                {(midterm || !scored) && (
+                                {(automatic || !scored) && (
                                     <p>
                                         {midterm
                                             ? "Fewest training steps with final validation loss < 3.28. Best qualifying run per participant."
-                                            : "Correctness first. Ranked by earliest passing submission."}
+                                            : lab7
+                                                ? "Fewest counted training tokens at ≤ 1.25 BPB across all 9 Paloma sources."
+                                                : "Correctness first. Ranked by earliest passing submission."}
                                     </p>
                                 )}
                             </div>
@@ -267,12 +273,14 @@ export default function App() {
                                         <th>Rank</th>
                                         <th>Participant</th>
                                         <th>
-                                            {midterm ? "Training steps ↓" : scored
+                                            {midterm ? "Training steps ↓" : lab7 ? "Counted tokens ↓" : scored
                                                 ? `${lab?.primary_metric} ${lab?.metric_direction === "maximize" ? "↑" : "↓"}`
                                                 : "Result"}
                                         </th>
                                         {midterm && <th>Validation loss</th>}
-                                        <th>{midterm ? "Run started" : "Submitted"}</th>
+                                        {lab7 && <th>Total tokens</th>}
+                                        {lab7 && <th>Paloma BPB (9 sources)</th>}
+                                        <th>{automatic ? "Run started" : "Submitted"}</th>
                                         <th>
                                             <span className="sr-only">Run</span>
                                         </th>
@@ -306,7 +314,7 @@ export default function App() {
                                                         </strong>
                                                         <small>
                                                             {entry.attempts}{" "}
-                                                            {midterm
+                                                            {automatic
                                                                 ? entry.attempts === 1 ? "run" : "runs"
                                                                 : entry.attempts === 1 ? "submission" : "submissions"}
                                                         </small>
@@ -319,7 +327,7 @@ export default function App() {
                                                         {entry.score?.toLocaleString(
                                                             undefined,
                                                             {
-                                                                maximumSignificantDigits: 7,
+                                                                ...(lab7 ? {} : { maximumSignificantDigits: 7 }),
                                                             },
                                                         )}
                                                     </span>
@@ -331,6 +339,8 @@ export default function App() {
                                                 )}
                                             </td>
                                             {midterm && <td className="score">{entry.val_loss?.toLocaleString(undefined, { maximumFractionDigits: 5 })}</td>}
+                                            {lab7 && <td className="score">{entry.total_tokens?.toLocaleString()}</td>}
+                                            {lab7 && <td className="score">{entry.paloma_ppl?.toLocaleString(undefined, { maximumFractionDigits: 5 })}</td>}
                                             <td className="submitted">
                                                 {date(entry.submitted_at)}
                                             </td>

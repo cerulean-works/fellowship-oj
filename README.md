@@ -197,6 +197,79 @@ job as infrastructure errors instead of silently switching to CPU or eager
 execution. The runtime check runs before dataset preparation. Compile-capable
 CUDA dependencies and a host C/C++ compiler must be installed on compute nodes.
 
+### Lab 7 — Data Curation and Mixing
+
+Find a pretraining data recipe that reaches **≤ 1.25 bits per byte (BPB)**
+on the nine-source Paloma macro average using a 1B model with the Llama 3.2
+1B architecture. Qualifying runs are ranked by the fewest counted training
+tokens. You may use published datasets such as Dolma, RedPajama, FineWeb, and
+FinePDFs, Common Crawl snapshots, or data you crawl yourself. Decontaminate
+your training data using [Paloma Appendix C.1](https://arxiv.org/abs/2312.10523).
+Fix all random seeds at 42.
+
+Count the tokens used to update model weights, including repeat exposures.
+You may repeat up to 10% of your training data without counting those extra
+exposures against your score. For example, 200B training tokens plus 20B
+eligible repeated tokens gives a counted total of 200B and an actual total
+of 220B.
+
+#### Compute grants
+
+Each pair receives the following grants. Each grant permits one run up to its
+H200-hour allowance. H200-hours are summed across GPUs, so eight H200s used
+for two hours consume 16 H200-hours.
+
+| Grant allowance per run | Reference scale | Reference tokens | Grants per pair | Availability |
+| --- | --- | --- | --- | --- |
+| 40 H200-hours | 150M | 30B | Unlimited | Both weeks |
+| 110 H200-hours | 300M | 60B | 10 | Both weeks |
+| 266 H200-hours | 500M | 100B | 5 | 1 in week 1, 4 in week 2 |
+| 2160 H200-hours | 1B | 200B | 3 | 1 in week 1, 2 in week 2 |
+
+The reference runs use 200 tokens per parameter and assume an optimized PyTorch
+trainer with `torch.compile`, FlashAttention-3, and sequence packing. Choose
+exploratory model sizes using the architecture scaling equation and choose
+training horizons within the grant allowance. For the required 750M calibration
+run, use the scaling equation and train for 200 tokens per parameter.
+
+Each launch consumes one grant at its assigned level, even if you run a
+smaller experiment or stop early. Resuming an interrupted run from its
+checkpoint uses the original grant.
+
+#### Evaluation
+
+Accept the [Paloma dataset terms](https://huggingface.co/datasets/allenai/paloma)
+before your first run. Evaluate a pinned model revision in float32 on the full
+test split. See the [Flock evaluation guide](https://github.com/cerulean-works/flock/blob/main/docs/source/evals/run-evaluation.md).
+
+```bash
+flock eval run \
+  --suite paloma \
+  --model "your-org/your-model@your-revision" \
+  --dtype float32 \
+  --out results/paloma
+```
+
+Flock covers 309 domains across nine Paloma sources. For each source, take
+the unweighted mean of its domain BPB scores. Flock writes these source
+means as the `paloma:<source>` suite scores in `results/paloma/results.json`.
+Average the nine source scores with equal weight and include the source
+count when reporting the result. The qualifying score requires all nine sources.
+
+#### Submissions
+
+The OJ automatically reads finished runs in Flock's `lab7-data-curation`
+project. Log these run summary metrics.
+
+| Metric | Value |
+| --- | --- |
+| `oj_total_tokens` | The counted training tokens after the repetition discount. The OJ minimizes this score. |
+| `total_tokens` | All tokens used to update weights, including repeat exposures. |
+| `paloma_ppl` | The nine-source macro **BPB**, recorded under this summary key. The OJ accepts values at or below 1.25. |
+
+The board shows the best qualifying run per Flock owner. The judge uses the
+reported summary metrics to qualify and rank runs.
+
 ### Development
 
 ```console
@@ -511,6 +584,7 @@ Configure these variables on the API service (also listed in `.env.example`):
 | `JUDGE_FLOCK_WEB_URL` | Browser-accessible dashboard origin for project/run links and avatars; defaults to the API origin. |
 | `JUDGE_FLOCK_ENTITY` | Organization; defaults to `cerulean-labs`. |
 | `JUDGE_FLOCK_LABS_PROJECT` | Judged runs; defaults to `study-group-labs`. |
+| `JUDGE_FLOCK_LAB7_PROJECT` | Lab 7 training runs; defaults to `lab7-data-curation`. |
 | `JUDGE_FLOCK_MIDTERM_PROJECT` | Training runs; defaults to `midterm-nanogpt`. |
 
 Flock's authentication split limits W&B/API keys (including older `flock-…`
@@ -535,16 +609,16 @@ extend their expiry on use (90 days by default); if a sign-in is revoked or
 expires, sign in again, replace the deployment secret, and recreate the API.
 Manage this sign-in under **Command line sign-ins** on the Flock account page.
 
-Midterm participants use their Flock member name and avatar, matched by the run's
+Lab 7 and midterm participants use their Flock member name and avatar, matched by the run's
 owner ID. Avatar paths are resolved against `JUDGE_FLOCK_WEB_URL`, whose dashboard
 serves `/api/v1/avatars/*` publicly without an API key. Set this URL when the API
-origin is internal. Missing or failed images show initials. Lab participants keep
+origin is internal. Missing or failed images show initials. Participants in judged labs keep
 their `config.github_actor` identity and GitHub avatar; the run's Flock owner may
 be a shared judge account.
 
 Ensure judged lab runs are available in the Flock labs project (for example,
 through Flock's W&B importer). A project that has not been created yet shows an
-empty board without preventing the other project's results from loading.
+empty board without preventing the other projects' results from loading.
 The existing lab publishers still write to W&B; this change switches leaderboard
 reads only. Lab reads require `summary.judge_status = "completed"`, along with
 the existing `config.task_id` and `config.github_actor` metadata. Ranking rules

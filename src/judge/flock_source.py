@@ -1,4 +1,4 @@
-"""Server-side Flock reads for judged labs and the submission-free midterm."""
+"""Server-side Flock reads for judged labs and submission-free leaderboards."""
 
 import json
 import logging
@@ -11,6 +11,8 @@ from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
 MIDTERM_ID = "midterm"
+LAB7_ID = "lab7"
+LAB7_BPB_LIMIT = 1.25
 logger = logging.getLogger("uvicorn.error.judge.leaderboard")
 
 
@@ -146,6 +148,7 @@ def flock_submissions(task_ids):
     client = FlockClient()
     labs = os.getenv("JUDGE_FLOCK_LABS_PROJECT") or "study-group-labs"
     midterm = os.getenv("JUDGE_FLOCK_MIDTERM_PROJECT") or "midterm-nanogpt"
+    lab7 = os.getenv("JUDGE_FLOCK_LAB7_PROJECT") or "lab7-data-curation"
     # Verify organization access before treating a missing project as empty.
     members = client.get(f"orgs/{quote(client.entity, safe='')}/members")["members"]
     owners = {member["id"]: member for member in members}
@@ -200,20 +203,72 @@ def flock_submissions(task_ids):
             )
             continue
         result.append(
-            {
-                "id": run["id"],
-                "task_id": MIDTERM_ID,
-                "github_actor": owners[owner]["name"],
-                "participant_id": f"flock:{owner}",
-                "avatar_url": client.avatar_url(owners[owner].get("avatar_url")),
-                "submitted_at": created,
-                "passed": True,
-                "metrics": {"total_train_steps": int(steps), "val_loss": loss},
-                "run_url": f"{client.project_url(midterm)}/runs/{quote(run['id'], safe='')}",
-                "project_url": client.project_url(midterm),
-            }
+            owned_submission(
+                client,
+                midterm,
+                MIDTERM_ID,
+                run["id"],
+                owners[owner],
+                created,
+                {"total_train_steps": int(steps), "val_loss": loss},
+            )
+        )
+    for run in client.runs(lab7, {"state": "finished"}):
+        score = run.get("summary.oj_total_tokens")
+        total = run.get("summary.total_tokens")
+        bpb = run.get("summary.paloma_ppl")
+        owner = run.get("owner")
+        if (
+            not finite(score)
+            or not finite(total)
+            or not 0 < score <= total
+            or int(score) != score
+            or int(total) != total
+            or not finite(bpb)
+            or not 0 <= bpb <= LAB7_BPB_LIMIT
+            or owner not in owners
+        ):
+            continue
+        try:
+            created = submitted_at(run.get("created_at"))
+        except ValueError, TypeError, OverflowError, OSError:
+            continue
+        result.append(
+            owned_submission(
+                client,
+                lab7,
+                LAB7_ID,
+                run["id"],
+                owners[owner],
+                created,
+                {
+                    "oj_total_tokens": int(score),
+                    "total_tokens": int(total),
+                    "paloma_ppl": bpb,
+                },
+            )
         )
     logger.info(
-        "Flock runs fetched labs=%s midterm=%s accepted=%d", labs, midterm, len(result)
+        "Flock runs fetched labs=%s midterm=%s lab7=%s accepted=%d",
+        labs,
+        midterm,
+        lab7,
+        len(result),
     )
     return result
+
+
+def owned_submission(client, project, task, run_id, owner, created, metrics):
+    project_url = client.project_url(project)
+    return {
+        "id": run_id,
+        "task_id": task,
+        "github_actor": owner["name"],
+        "participant_id": f"flock:{owner['id']}",
+        "avatar_url": client.avatar_url(owner.get("avatar_url")),
+        "submitted_at": created,
+        "passed": True,
+        "metrics": metrics,
+        "run_url": f"{project_url}/runs/{quote(run_id, safe='')}",
+        "project_url": project_url,
+    }

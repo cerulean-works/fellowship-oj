@@ -14,7 +14,7 @@ from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 
-from judge.flock_source import MIDTERM_ID, flock_submissions
+from judge.flock_source import LAB7_ID, MIDTERM_ID, flock_submissions
 from judge.leaderboard_images import render_standings
 from judge.models import GradingType, MetricDirection, TaskMetadata
 from judge.tasks import TASKS
@@ -49,6 +49,8 @@ class SubmissionEntry(TypedDict):
     participant_id: NotRequired[str]
     avatar_url: NotRequired[str | None]
     val_loss: NotRequired[float]
+    total_tokens: NotRequired[int]
+    paloma_ppl: NotRequired[float]
 
 
 class RankedEntry(SubmissionEntry):
@@ -84,14 +86,20 @@ def timestamp(value: object) -> datetime:
 
 def rank_submissions(submissions) -> list[Leaderboard]:
     boards: list[Leaderboard] = []
-    # The midterm is a read-only board, never an executable OJ task.
+    # Read-only boards are separate from executable OJ tasks.
     metadata_list = [task.metadata() for task in TASKS.values()] + [
         TaskMetadata(
             id=MIDTERM_ID,
             grading_type=GradingType.SCORE,
             primary_metric="total_train_steps",
             metric_direction=MetricDirection.MINIMIZE,
-        )
+        ),
+        TaskMetadata(
+            id=LAB7_ID,
+            grading_type=GradingType.SCORE,
+            primary_metric="oj_total_tokens",
+            metric_direction=MetricDirection.MINIMIZE,
+        ),
     ]
     for metadata in metadata_list:
         scored = metadata.grading_type == "score"
@@ -138,6 +146,14 @@ def rank_submissions(submissions) -> list[Leaderboard]:
                         **(
                             {"val_loss": item["metrics"]["val_loss"]}
                             if metadata.id == MIDTERM_ID
+                            else {}
+                        ),
+                        **(
+                            {
+                                "total_tokens": item["metrics"]["total_tokens"],
+                                "paloma_ppl": item["metrics"]["paloma_ppl"],
+                            }
+                            if metadata.id == LAB7_ID
                             else {}
                         ),
                     },
