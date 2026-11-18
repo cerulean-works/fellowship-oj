@@ -568,8 +568,9 @@ then run `playwright install --with-deps --only-shell chromium`. Set `JUDGE_UI_D
 to the built UI directory if needed, and `JUDGE_CHROMIUM_EXECUTABLE` to use an
 existing Chromium installation.
 
-The frontend lists the midterm first, then labs from highest to lowest number,
-opens the first board by default, and keeps a manual selection during refreshes.
+The frontend opens Lab 7 by default and lists it first, followed by the midterm
+and the remaining labs in descending order. It keeps a manual selection during
+refreshes.
 It uses bundled Host Grotesk throughout and chooses one of 106 greetings per visit.
 
 ### Flock leaderboards and the midterm

@@ -108,8 +108,9 @@ export default function App() {
                     );
                 const snapshot: Snapshot = await response.json();
                 snapshot.labs.sort((a, b) => {
-                    if (a.id === "midterm") return -1;
-                    if (b.id === "midterm") return 1;
+                    const priority = (id: string) => id === "lab7" ? 2 : id === "midterm" ? 1 : 0;
+                    const order = priority(b.id) - priority(a.id);
+                    if (order !== 0) return order;
                     return b.id.localeCompare(a.id, undefined, { numeric: true });
                 });
                 setData(snapshot);
@@ -207,13 +208,11 @@ export default function App() {
                                         ? (names[lab.id] ?? lab.id)
                                         : "Loading experiments"}
                                 </h2>
-                                {(automatic || !scored) && (
+                                {(midterm || !scored) && (
                                     <p>
                                         {midterm
                                             ? "Fewest training steps with final validation loss < 3.28. Best qualifying run per participant."
-                                            : lab7
-                                                ? "Fewest counted training tokens at ≤ 1.25 BPB across all 9 Paloma sources."
-                                                : "Correctness first. Ranked by earliest passing submission."}
+                                            : "Correctness first. Ranked by earliest passing submission."}
                                     </p>
                                 )}
                             </div>

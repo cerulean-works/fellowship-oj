@@ -13,7 +13,7 @@ pytestmark = pytest.mark.screenshot
 
 
 @pytest.mark.parametrize("width", [1280, 390])
-def test_midterm_navigation_font_and_refresh(tmp_path, width):
+def test_lab_navigation_font_and_refresh(tmp_path, width):
     dist = Path(__file__).resolve().parents[1] / "ui/dist"
     entries = [
         {
@@ -84,11 +84,13 @@ def test_midterm_navigation_font_and_refresh(tmp_path, width):
         page.route("https://github.com/**", github)
         page.clock.install()
         page.goto("http://leaderboard.invalid/", wait_until="networkidle")
-        expect(page.locator(".board h2")).to_have_text("Speedrunning NanoGPT")
+        expect(page.locator(".board h2")).to_have_text("Data Curation and Mixing")
+        expect(page.locator(".lab-button.active strong")).to_have_text("Lab 7")
         buttons = page.locator(".lab-button strong").all_text_contents()
-        assert buttons[:3] == ["Midterm", "Lab 10", "Lab 5"]
+        assert buttons[:4] == ["Lab 7", "Midterm", "Lab 10", "Lab 5"]
         assert buttons[-1] == "Lab 1"
-        assert page.locator(".lab-button.active strong").inner_text() == "Midterm"
+        page.get_by_role("button", name="Midterm").click()
+        expect(page.locator(".board h2")).to_have_text("Speedrunning NanoGPT")
         expect(page.get_by_role("columnheader", name="Validation loss")).to_be_visible()
         expect(page.locator("tbody tr")).to_have_count(2)
         expect(page.locator(".avatar img")).to_have_count(1)
