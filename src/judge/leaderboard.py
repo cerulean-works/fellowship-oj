@@ -50,7 +50,7 @@ class SubmissionEntry(TypedDict):
     avatar_url: NotRequired[str | None]
     val_loss: NotRequired[float]
     total_tokens: NotRequired[int]
-    paloma_ppl: NotRequired[float]
+    paloma_bpb: NotRequired[float]
 
 
 class RankedEntry(SubmissionEntry):
@@ -151,7 +151,7 @@ def rank_submissions(submissions) -> list[Leaderboard]:
                         **(
                             {
                                 "total_tokens": item["metrics"]["total_tokens"],
-                                "paloma_ppl": item["metrics"]["paloma_ppl"],
+                                "paloma_bpb": item["metrics"]["paloma_bpb"],
                             }
                             if metadata.id == LAB7_ID
                             else {}

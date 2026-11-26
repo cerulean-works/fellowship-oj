@@ -25,7 +25,7 @@ type Entry = {
     avatar_url?: string | null;
     val_loss?: number;
     total_tokens?: number;
-    paloma_ppl?: number;
+    paloma_bpb?: number;
 };
 type Lab = {
     id: string;
@@ -339,7 +339,7 @@ export default function App() {
                                             </td>
                                             {midterm && <td className="score">{entry.val_loss?.toLocaleString(undefined, { maximumFractionDigits: 5 })}</td>}
                                             {lab7 && <td className="score">{entry.total_tokens?.toLocaleString()}</td>}
-                                            {lab7 && <td className="score">{entry.paloma_ppl?.toLocaleString(undefined, { maximumFractionDigits: 5 })}</td>}
+                                            {lab7 && <td className="score">{entry.paloma_bpb?.toLocaleString(undefined, { maximumFractionDigits: 5 })}</td>}
                                             <td className="submitted">
                                                 {date(entry.submitted_at)}
                                             </td>
