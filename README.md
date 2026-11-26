@@ -265,7 +265,7 @@ project. Log these run summary metrics.
 | --- | --- |
 | `oj_total_tokens` | The counted training tokens after the repetition discount. The OJ minimizes this score. |
 | `total_tokens` | All tokens used to update weights, including repeat exposures. |
-| `paloma_ppl` | The nine-source macro **BPB**, recorded under this summary key. The OJ accepts values at or below 1.25. |
+| `paloma_bpb` | The nine-source macro **BPB**. The OJ accepts values at or below 1.25. Runs that logged it as `paloma_ppl` are still read. |
 
 The board shows the best qualifying run per Flock owner. The judge uses the
 reported summary metrics to qualify and rank runs.

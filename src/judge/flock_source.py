@@ -216,7 +216,9 @@ def flock_submissions(task_ids):
     for run in client.runs(lab7, {"state": "finished"}):
         score = run.get("summary.oj_total_tokens")
         total = run.get("summary.total_tokens")
-        bpb = run.get("summary.paloma_ppl")
+        bpb = run.get("summary.paloma_bpb")
+        if bpb is None:
+            bpb = run.get("summary.paloma_ppl")
         owner = run.get("owner")
         if (
             not finite(score)
@@ -244,7 +246,7 @@ def flock_submissions(task_ids):
                 {
                     "oj_total_tokens": int(score),
                     "total_tokens": int(total),
-                    "paloma_ppl": bpb,
+                    "paloma_bpb": bpb,
                 },
             )
         )
