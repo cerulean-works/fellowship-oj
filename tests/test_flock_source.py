@@ -74,7 +74,7 @@ def test_lab7_ranks_qualifying_runs_by_discounted_tokens():
         "created_at": 1792400000,
         "summary.oj_total_tokens": 200_000_000_000,
         "summary.total_tokens": 220_000_000_000,
-        "summary.paloma_bpb": 1.25,
+        "summary.paloma_bpb": 1.0,
     }
     items = fetch(
         lab7=[
@@ -90,7 +90,7 @@ def test_lab7_ranks_qualifying_runs_by_discounted_tokens():
                 **run,
                 "id": "over",
                 "summary.oj_total_tokens": 1,
-                "summary.paloma_bpb": 1.25001,
+                "summary.paloma_bpb": 1.00001,
             },
             {**run, "id": "missing", "summary.paloma_bpb": None},
             {**run, "id": "invalid", "summary.total_tokens": 1},
@@ -105,7 +105,7 @@ def test_lab7_ranks_qualifying_runs_by_discounted_tokens():
     ]
     best = board["entries"][0]
     assert best["total_tokens"] == 220_000_000_000
-    assert best["paloma_bpb"] == 1.25
+    assert best["paloma_bpb"] == 1.0
     assert best["attempts"] == 2
     assert (
         best["run_url"]
@@ -121,7 +121,7 @@ def test_lab7_falls_back_to_paloma_ppl_when_bpb_missing():
         "created_at": 1792400000,
         "summary.oj_total_tokens": 200_000_000_000,
         "summary.total_tokens": 220_000_000_000,
-        "summary.paloma_ppl": 1.2,
+        "summary.paloma_ppl": 0.9,
     }
     items = fetch(
         lab7=[
@@ -130,13 +130,13 @@ def test_lab7_falls_back_to_paloma_ppl_when_bpb_missing():
                 **run,
                 "id": "bpb-wins",
                 "owner": 8,
-                "summary.paloma_bpb": 1.3,
+                "summary.paloma_bpb": 1.1,
             },
         ]
     )
     board = next(board for board in rank_submissions(items) if board["id"] == "lab7")
     assert [entry["submission_id"] for entry in board["entries"]] == ["legacy"]
-    assert board["entries"][0]["paloma_bpb"] == 1.2
+    assert board["entries"][0]["paloma_bpb"] == 0.9
 
 
 def test_midterm_profiles_follow_owner_id_through_ranking():
