@@ -199,7 +199,7 @@ CUDA dependencies and a host C/C++ compiler must be installed on compute nodes.
 
 ### Lab 7 — Data Curation and Mixing
 
-Find a pretraining data recipe that reaches **≤ 1.25 bits per byte (BPB)**
+Find a pretraining data recipe that reaches **≤ 1.0 bits per byte (BPB)**
 on the nine-source Paloma macro average using a 1B model with the Llama 3.2
 1B architecture. Qualifying runs are ranked by the fewest counted training
 tokens. You may use published datasets such as Dolma, RedPajama, FineWeb, and
@@ -265,7 +265,7 @@ project. Log these run summary metrics.
 | --- | --- |
 | `oj_total_tokens` | The counted training tokens after the repetition discount. The OJ minimizes this score. |
 | `total_tokens` | All tokens used to update weights, including repeat exposures. |
-| `paloma_bpb` | The nine-source macro **BPB**. The OJ accepts values at or below 1.25. Runs that logged it as `paloma_ppl` are still read. |
+| `paloma_bpb` | The nine-source macro **BPB**. The OJ accepts values at or below 1.0. Runs that logged it as `paloma_ppl` are still read. |
 
 The board shows the best qualifying run per Flock owner. The judge uses the
 reported summary metrics to qualify and rank runs.

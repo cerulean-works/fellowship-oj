@@ -12,7 +12,7 @@ from urllib.request import Request, urlopen
 
 MIDTERM_ID = "midterm"
 LAB7_ID = "lab7"
-LAB7_BPB_LIMIT = 1.25
+LAB7_BPB_LIMIT = 1.0
 logger = logging.getLogger("uvicorn.error.judge.leaderboard")
 
 
